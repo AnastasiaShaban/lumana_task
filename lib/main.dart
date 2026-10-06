@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:lumana_task/core/injection_container.dart';
+import 'package:lumana_task/features/search/presentation/search_screen.dart';
 
 void main() {
+  setupDi();
+
   runApp(const MyApp());
 }
 
@@ -15,7 +19,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const Scaffold(body: Center(child: Text('Dummy Search'))),
+      home: const SearchScreen(),
     );
   }
 }

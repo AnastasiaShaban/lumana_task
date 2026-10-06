@@ -19,6 +19,7 @@ dependencies:
   dio: ^5.11.1
   connectivity_plus: ^7.3.2
   get_it: ^9.3.0
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:
