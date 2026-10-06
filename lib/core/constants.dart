@@ -11,6 +11,7 @@ class AppStrings {
   static const String searchHint = 'Search products...';
   static const String nothingFound = 'Nothing found';
   static const String tryAgain = 'Try again';
+  static const String noInternet = 'No internet connection';
 }
 
 class AppColors {

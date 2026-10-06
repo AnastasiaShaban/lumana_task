@@ -13,3 +13,9 @@ class RemoveFromHistory extends SearchEvent {
 
   RemoveFromHistory(this.query);
 }
+
+class ConnectivityChanged extends SearchEvent {
+  final bool isOnline;
+
+  ConnectivityChanged(this.isOnline);
+}

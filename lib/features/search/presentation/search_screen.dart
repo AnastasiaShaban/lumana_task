@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:lumana_task/core/connectivity_service.dart';
 import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/core/injection_container.dart';
 import 'bloc/search_bloc.dart';
@@ -31,28 +33,41 @@ class _SearchView extends StatefulWidget {
 class _SearchViewState extends State<_SearchView> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  var _canLoadMore = true;
+  StreamSubscription? _connectivitySub;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_checkScroll);
+    _scrollController.addListener(_onScroll);
+    _initConnectivity();
   }
 
-  void _checkScroll() {
-    if (!_scrollController.hasClients || !_canLoadMore) return;
+  void _initConnectivity() {
+    final bloc = context.read<SearchBloc>();
+    final connectivity = sl<ConnectivityService>();
+    connectivity.hasConnection().then((isOnline) {
+      bloc.add(ConnectivityChanged(isOnline));
+    });
+    _connectivitySub = connectivity.onConnectivityChanged.listen((isOnline) {
+      bloc.add(ConnectivityChanged(isOnline));
+    });
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final state = context.read<SearchBloc>().state;
+    if (state.isLoadingMore || state.hasReachedMax) return;
 
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
     if (currentScroll >= maxScroll * 0.9) {
-      _canLoadMore = false;
       context.read<SearchBloc>().add(LoadMoreProducts());
-      Future.delayed(Duration(milliseconds: 500), () => _canLoadMore = true);
     }
   }
 
   @override
   void dispose() {
+    _connectivitySub?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -64,58 +79,105 @@ class _SearchViewState extends State<_SearchView> {
       appBar: AppBar(title: const Text(AppStrings.appTitle)),
       body: Column(
         children: [
-          _buildSearchField(),
-          Expanded(child: _buildContent()),
+          const _OfflineBanner(),
+          _SearchInputField(controller: _controller),
+          Expanded(
+            child: _SearchContent(
+              controller: _controller,
+              scrollController: _scrollController,
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSearchField() {
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SearchBloc, SearchState>(
+      buildWhen: (prev, curr) => prev.isOnline != curr.isOnline,
+      builder: (context, state) {
+        if (state.isOnline) return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          color: Colors.red,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: const Text(
+            AppStrings.noInternet,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SearchInputField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _SearchInputField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: BlocBuilder<SearchBloc, SearchState>(
-        buildWhen: (prev, curr) => prev.query != curr.query,
-        builder: (ctx, state) {
-          return TextField(
-            controller: _controller,
-            decoration: InputDecoration(
-              hintText: AppStrings.searchHint,
-              prefixIcon: Icon(AppIcons.search),
-              suffixIcon: _controller.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: Icon(AppIcons.clear),
-                      onPressed: () {
-                        _controller.clear();
-                        ctx.read<SearchBloc>().add(SearchQueryChanged(''));
-                      },
-                    ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onChanged: (val) {
-              ctx.read<SearchBloc>().add(SearchQueryChanged(val));
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          hintText: AppStrings.searchHint,
+          prefixIcon: Icon(AppIcons.search),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              if (value.text.isEmpty) return const SizedBox.shrink();
+              return IconButton(
+                icon: Icon(AppIcons.clear),
+                onPressed: () {
+                  controller.clear();
+                  context.read<SearchBloc>().add(SearchQueryChanged(''));
+                },
+              );
             },
-          );
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onChanged: (val) {
+          context.read<SearchBloc>().add(SearchQueryChanged(val));
         },
       ),
     );
   }
+}
 
-  Widget _buildContent() {
+class _SearchContent extends StatelessWidget {
+  final TextEditingController controller;
+  final ScrollController scrollController;
+
+  const _SearchContent({
+    required this.controller,
+    required this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return BlocBuilder<SearchBloc, SearchState>(
-      builder: (ctx, state) {
+      builder: (context, state) {
         if (state.query.isEmpty && state.queryHistory.isNotEmpty) {
           return SearchSuggestions(
             suggestions: state.queryHistory,
             onTap: (q) {
-              _controller.text = q;
-              ctx.read<SearchBloc>().add(SearchQueryChanged(q));
+              controller.text = q;
+              context.read<SearchBloc>().add(SearchQueryChanged(q));
             },
             onRemove: (q) {
-              ctx.read<SearchBloc>().add(RemoveFromHistory(q));
+              context.read<SearchBloc>().add(RemoveFromHistory(q));
             },
           );
         }
@@ -128,7 +190,7 @@ class _SearchViewState extends State<_SearchView> {
                 Text(state.error!),
                 SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => ctx.read<SearchBloc>().add(
+                  onPressed: () => context.read<SearchBloc>().add(
                     SearchQueryChanged(state.query),
                   ),
                   child: const Text(AppStrings.tryAgain),
@@ -151,7 +213,7 @@ class _SearchViewState extends State<_SearchView> {
         }
 
         return ListView.builder(
-          controller: _scrollController,
+          controller: scrollController,
           padding: const EdgeInsets.only(bottom: 16),
           itemCount: state.hasReachedMax
               ? state.products.length

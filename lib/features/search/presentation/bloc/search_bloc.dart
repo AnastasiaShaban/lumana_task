@@ -15,11 +15,16 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       transformer: (events, mapper) {
         return events
             .debounceTime(Duration(milliseconds: AppConstants.debounceMs))
-            .flatMap(mapper);
+            .switchMap(mapper);
       },
     );
     on<LoadMoreProducts>(_loadNextPage);
     on<RemoveFromHistory>(_removeFromHistory);
+    on<ConnectivityChanged>(_onConnectivityChanged);
+  }
+
+  void _onConnectivityChanged(ConnectivityChanged event, Emitter<SearchState> emit) {
+    emit(state.copyWith(isOnline: event.isOnline));
   }
 
   void _removeFromHistory(RemoveFromHistory event, Emitter<SearchState> emit) {
@@ -33,7 +38,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   ) async {
     final query = event.query.trim();
     if (query.isEmpty) {
-      emit(SearchState(queryHistory: state.queryHistory));
+      emit(SearchState(queryHistory: state.queryHistory, isOnline: state.isOnline));
       return;
     }
 
@@ -47,7 +52,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           products: res.products,
           isLoading: false,
           hasReachedMax: res.products.length >= res.total,
-          queryHistory: _addToHistory(query),
+          queryHistory: res.products.isNotEmpty ? _addToHistory(query) : state.queryHistory,
         ),
       );
     } catch (e) {
@@ -59,9 +64,9 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     LoadMoreProducts event,
     Emitter<SearchState> emit,
   ) async {
-    if (state.hasReachedMax || state.isLoading) return;
+    if (state.hasReachedMax || state.isLoadingMore) return;
 
-    emit(state.copyWith(isLoading: true));
+    emit(state.copyWith(isLoadingMore: true));
     try {
       final res = await _repo.search(
         state.query,
@@ -73,12 +78,12 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       emit(
         state.copyWith(
           products: allProducts,
-          isLoading: false,
+          isLoadingMore: false,
           hasReachedMax: allProducts.length >= res.total,
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      emit(state.copyWith(isLoadingMore: false, error: e.toString()));
     }
   }
 
