@@ -6,13 +6,13 @@ class ApiClient {
   final Dio _dio;
 
   ApiClient()
-      : _dio = Dio(
-    BaseOptions(
-      baseUrl: baseURL,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
+    : _dio = Dio(
+        BaseOptions(
+          baseUrl: baseURL,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) {
     return _dio.get(path, queryParameters: queryParameters);

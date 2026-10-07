@@ -1,5 +1,9 @@
-import 'package:lumana_task/features/search/data/product_response.dart';
+import 'search_result.dart';
 
 abstract class ProductRepository {
-  Future<ProductResponse> search(String query, int skip, int limit);
+  Future<SearchResult> search(String query, int skip, int limit);
+
+  List<String> get searchHistory;
+
+  Future<void> saveSearchHistory(List<String> history);
 }

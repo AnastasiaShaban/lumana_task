@@ -77,17 +77,30 @@ class _SearchViewState extends State<_SearchView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.appTitle)),
-      body: Column(
-        children: [
-          const _OfflineBanner(),
-          _SearchInputField(controller: _controller),
-          Expanded(
-            child: _SearchContent(
-              controller: _controller,
-              scrollController: _scrollController,
+      body: BlocListener<SearchBloc, SearchState>(
+        listenWhen: (prev, curr) =>
+            curr.error != null &&
+            curr.error != prev.error &&
+            curr.products.isNotEmpty,
+        listener: (context, state) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(state.error!)));
+        },
+        child: Column(
+          children: [
+            const _OfflineBanner(),
+            _SearchInputField(controller: _controller),
+            _SuggestionChips(controller: _controller),
+            const _CacheNotice(),
+            Expanded(
+              child: _SearchContent(
+                controller: _controller,
+                scrollController: _scrollController,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -110,6 +123,92 @@ class _OfflineBanner extends StatelessWidget {
             AppStrings.noInternet,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SuggestionChips extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _SuggestionChips({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        if (value.text.trim().isEmpty) return const SizedBox.shrink();
+
+        return BlocBuilder<SearchBloc, SearchState>(
+          buildWhen: (prev, curr) => prev.queryHistory != curr.queryHistory,
+          builder: (context, state) {
+            final matches = state.suggestionsFor(value.text);
+            if (matches.isEmpty) return const SizedBox.shrink();
+
+            return SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: matches.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final suggestion = matches[i];
+
+                  return ActionChip(
+                    avatar: Icon(AppIcons.history, size: 16),
+                    label: Text(suggestion),
+                    onPressed: () {
+                      controller.text = suggestion;
+                      controller.selection = TextSelection.collapsed(
+                        offset: suggestion.length,
+                      );
+                      context.read<SearchBloc>().add(
+                        SearchQueryChanged(suggestion),
+                      );
+                    },
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _CacheNotice extends StatelessWidget {
+  const _CacheNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SearchBloc, SearchState>(
+      buildWhen: (prev, curr) =>
+          prev.isFromCache != curr.isFromCache ||
+          prev.products.isEmpty != curr.products.isEmpty,
+      builder: (context, state) {
+        if (!state.isFromCache || state.products.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(
+            children: [
+              Icon(
+                AppIcons.offline,
+                size: 16,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                AppStrings.cachedResults,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
         );
       },
@@ -144,9 +243,7 @@ class _SearchInputField extends StatelessWidget {
               );
             },
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         onChanged: (val) {
           context.read<SearchBloc>().add(SearchQueryChanged(val));
@@ -182,26 +279,35 @@ class _SearchContent extends StatelessWidget {
           );
         }
 
-        if (state.error != null && state.products.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(state.error!),
-                SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.read<SearchBloc>().add(
-                    SearchQueryChanged(state.query),
-                  ),
-                  child: const Text(AppStrings.tryAgain),
-                ),
-              ],
-            ),
-          );
-        }
-
         if (state.isLoading && state.products.isEmpty) {
           return const Center(child: CircularProgressIndicator());
+        }
+
+        if (state.error != null && state.products.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    AppIcons.offline,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(state.error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => context.read<SearchBloc>().add(
+                      SearchQueryChanged(state.query),
+                    ),
+                    child: const Text(AppStrings.tryAgain),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         if (state.products.isEmpty && state.query.isNotEmpty) {

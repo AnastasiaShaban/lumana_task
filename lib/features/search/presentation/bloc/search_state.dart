@@ -1,6 +1,9 @@
+import 'package:equatable/equatable.dart';
+
+import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/features/search/data/product.dart';
 
-class SearchState {
+class SearchState extends Equatable {
   final List<Product> products;
   final bool isLoading;
   final bool isLoadingMore;
@@ -10,7 +13,9 @@ class SearchState {
   final List<String> queryHistory;
   final bool isOnline;
 
-  SearchState({
+  final bool isFromCache;
+
+  const SearchState({
     this.products = const [],
     this.isLoading = false,
     this.isLoadingMore = false,
@@ -19,7 +24,25 @@ class SearchState {
     this.error,
     this.queryHistory = const [],
     this.isOnline = true,
+    this.isFromCache = false,
   });
+
+  List<String> suggestionsFor(String input) {
+    final needle = input.trim().toLowerCase();
+    if (needle.isEmpty) return queryHistory;
+
+    return queryHistory
+        .where((item) => item.toLowerCase() != needle && _matches(item, needle))
+        .take(AppConstants.maxSuggestions)
+        .toList();
+  }
+
+  static bool _matches(String item, String needle) {
+    final lower = item.toLowerCase();
+    if (lower.startsWith(needle)) return true;
+
+    return lower.split(RegExp(r'\s+')).any((word) => word.startsWith(needle));
+  }
 
   SearchState copyWith({
     List<Product>? products,
@@ -28,8 +51,10 @@ class SearchState {
     bool? hasReachedMax,
     String? query,
     String? error,
+    bool clearError = false,
     List<String>? queryHistory,
     bool? isOnline,
+    bool? isFromCache,
   }) {
     return SearchState(
       products: products ?? this.products,
@@ -37,9 +62,23 @@ class SearchState {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       query: query ?? this.query,
-      error: error,
+      error: clearError ? null : (error ?? this.error),
       queryHistory: queryHistory ?? this.queryHistory,
       isOnline: isOnline ?? this.isOnline,
+      isFromCache: isFromCache ?? this.isFromCache,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    products,
+    isLoading,
+    isLoadingMore,
+    hasReachedMax,
+    query,
+    error,
+    queryHistory,
+    isOnline,
+    isFromCache,
+  ];
 }

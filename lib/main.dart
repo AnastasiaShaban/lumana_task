@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lumana_task/core/injection_container.dart';
 import 'package:lumana_task/features/search/presentation/search_screen.dart';
 
-void main() {
-  setupDi();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await setupDi();
 
   runApp(const MyApp());
 }
