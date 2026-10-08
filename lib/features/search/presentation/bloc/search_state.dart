@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'package:lumana_task/core/constants.dart';
-import 'package:lumana_task/features/search/data/product.dart';
+import 'package:lumana_task/features/search/domain/product.dart';
 
 class SearchState extends Equatable {
   final List<Product> products;

@@ -3,8 +3,8 @@ import 'package:lumana_task/core/constants.dart';
 
 class SearchSuggestions extends StatelessWidget {
   final List<String> suggestions;
-  final Function(String) onTap;
-  final Function(String) onRemove;
+  final void Function(String) onTap;
+  final void Function(String) onRemove;
 
   const SearchSuggestions({
     super.key,
@@ -19,6 +19,7 @@ class SearchSuggestions extends StatelessWidget {
       itemCount: suggestions.length,
       itemBuilder: (_, i) {
         final item = suggestions[i];
+
         return ListTile(
           leading: Icon(AppIcons.history),
           title: Text(item),

@@ -5,6 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lumana_task/core/connectivity_service.dart';
 import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/core/injection_container.dart';
+import 'package:lumana_task/features/search/presentation/widgets/offline_banner.dart';
+import 'package:lumana_task/features/search/presentation/widgets/search_input_field.dart';
+
 import 'bloc/search_bloc.dart';
 import 'bloc/search_event.dart';
 import 'bloc/search_state.dart';
@@ -33,7 +36,7 @@ class _SearchView extends StatefulWidget {
 class _SearchViewState extends State<_SearchView> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  StreamSubscription? _connectivitySub;
+  StreamSubscription<bool>? _connectivitySub;
 
   @override
   void initState() {
@@ -89,8 +92,8 @@ class _SearchViewState extends State<_SearchView> {
         },
         child: Column(
           children: [
-            const _OfflineBanner(),
-            _SearchInputField(controller: _controller),
+            const OfflineBanner(),
+            SearchInputField(controller: _controller),
             _SuggestionChips(controller: _controller),
             const _CacheNotice(),
             Expanded(
@@ -102,30 +105,6 @@ class _SearchViewState extends State<_SearchView> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _OfflineBanner extends StatelessWidget {
-  const _OfflineBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<SearchBloc, SearchState>(
-      buildWhen: (prev, curr) => prev.isOnline != curr.isOnline,
-      builder: (context, state) {
-        if (state.isOnline) return const SizedBox.shrink();
-        return Container(
-          width: double.infinity,
-          color: Colors.red,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: const Text(
-            AppStrings.noInternet,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white),
-          ),
-        );
-      },
     );
   }
 }
@@ -195,7 +174,7 @@ class _CacheNotice extends StatelessWidget {
           return const SizedBox.shrink();
         }
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
           child: Row(
             children: [
               Icon(
@@ -212,43 +191,6 @@ class _CacheNotice extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _SearchInputField extends StatelessWidget {
-  final TextEditingController controller;
-
-  const _SearchInputField({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          hintText: AppStrings.searchHint,
-          prefixIcon: Icon(AppIcons.search),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, _) {
-              if (value.text.isEmpty) return const SizedBox.shrink();
-              return IconButton(
-                icon: Icon(AppIcons.clear),
-                onPressed: () {
-                  controller.clear();
-                  context.read<SearchBloc>().add(SearchQueryChanged(''));
-                },
-              );
-            },
-          ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        onChanged: (val) {
-          context.read<SearchBloc>().add(SearchQueryChanged(val));
-        },
-      ),
     );
   }
 }

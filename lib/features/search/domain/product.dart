@@ -18,21 +18,21 @@ class Product extends Equatable {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-    id: json["id"],
-    title: json["title"],
-    description: json["description"],
-    price: json["price"]?.toDouble(),
-    thumbnail: json["thumbnail"],
-    rating: json["rating"]?.toDouble(),
+    id: json['id'] as int,
+    title: json['title'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    price: (json['price'] as num?)?.toDouble() ?? 0,
+    thumbnail: json['thumbnail'] as String? ?? '',
+    rating: (json['rating'] as num?)?.toDouble() ?? 0,
   );
 
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "title": title,
-    "description": description,
-    "price": price,
-    "thumbnail": thumbnail,
-    "rating": rating,
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'title': title,
+    'description': description,
+    'price': price,
+    'thumbnail': thumbnail,
+    'rating': rating,
   };
 
   @override

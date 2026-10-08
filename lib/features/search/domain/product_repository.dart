@@ -1,6 +1,6 @@
 import 'search_result.dart';
 
-abstract class ProductRepository {
+abstract interface class ProductRepository {
   Future<SearchResult> search(String query, int skip, int limit);
 
   List<String> get searchHistory;

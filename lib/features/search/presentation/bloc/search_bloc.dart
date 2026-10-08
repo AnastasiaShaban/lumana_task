@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:rxdart/rxdart.dart';
-
 import 'package:lumana_task/core/app_exception.dart';
 import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/features/search/domain/product_repository.dart';
+import 'package:rxdart/rxdart.dart';
+
 import 'search_event.dart';
 import 'search_state.dart';
 

@@ -29,7 +29,9 @@ class AppStrings {
 
 class AppColors {
   static const Color primary = Colors.deepPurple;
+  static const Color onPrimary = Colors.white;
   static const Color starRating = Colors.amber;
+  static const Color error = Colors.red;
 }
 
 class AppIcons {

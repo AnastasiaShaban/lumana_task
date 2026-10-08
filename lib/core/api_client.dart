@@ -1,21 +1,29 @@
 import 'package:dio/dio.dart';
 
 class ApiClient {
-  static const String baseURL = 'https://dummyjson.com';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://dummyjson.com',
+  );
+
+  static const Duration _timeout = Duration(seconds: 10);
 
   final Dio _dio;
 
   ApiClient()
     : _dio = Dio(
         BaseOptions(
-          baseUrl: baseURL,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
+          baseUrl: baseUrl,
+          connectTimeout: _timeout,
+          receiveTimeout: _timeout,
         ),
       );
 
-  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) {
-    return _dio.get(path, queryParameters: queryParameters);
+  Future<Response<T>> get<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) {
+    return _dio.get<T>(path, queryParameters: queryParameters);
   }
 }
 

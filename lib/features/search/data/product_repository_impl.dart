@@ -11,7 +11,7 @@ class ProductRepositoryImpl implements ProductRepository {
   final ProductLocalDatasource _local;
   final ConnectivityService _connectivity;
 
-  ProductRepositoryImpl(this._remote, this._local, this._connectivity);
+  const ProductRepositoryImpl(this._remote, this._local, this._connectivity);
 
   @override
   Future<SearchResult> search(String query, int skip, int limit) async {
@@ -29,7 +29,7 @@ class ProductRepositoryImpl implements ProductRepository {
       await _local.savePage(query, skip, limit, response);
 
       return SearchResult(
-        products: response.products,
+        products: response.products.map((dto) => dto.toDomain()).toList(),
         total: response.total,
         isFromCache: false,
       );
@@ -38,17 +38,17 @@ class ProductRepositoryImpl implements ProductRepository {
     }
   }
 
-  SearchResult _fromCacheOrThrow(
+  Future<SearchResult> _fromCacheOrThrow(
     String query,
     int skip,
     int limit,
     AppException error,
-  ) {
-    final cached = _local.getPage(query, skip, limit);
+  ) async {
+    final cached = await _local.getPage(query, skip, limit);
     if (cached == null) throw error;
 
     return SearchResult(
-      products: cached.products,
+      products: cached.products.map((dto) => dto.toDomain()).toList(),
       total: cached.total,
       isFromCache: true,
     );

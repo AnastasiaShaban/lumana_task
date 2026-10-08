@@ -1,4 +1,4 @@
-import 'package:lumana_task/features/search/data/product.dart';
+import 'package:lumana_task/features/search/domain/product.dart';
 
 class ProductResponse {
   final List<Product> products;
@@ -6,7 +6,7 @@ class ProductResponse {
   final int total;
   final int skip;
 
-  ProductResponse({
+  const ProductResponse({
     required this.products,
     required this.limit,
     required this.total,
@@ -15,12 +15,12 @@ class ProductResponse {
 
   factory ProductResponse.fromJson(Map<String, dynamic> json) {
     return ProductResponse(
-      products: (json['products'] as List)
-          .map((item) => Product.fromJson(item))
+      products: (json['products'] as List<dynamic>)
+          .map((item) => Product.fromJson(item as Map<String, dynamic>))
           .toList(),
-      total: json['total'],
-      skip: json['skip'],
-      limit: json['limit'],
+      total: json['total'] as int,
+      skip: json['skip'] as int,
+      limit: json['limit'] as int,
     );
   }
 }

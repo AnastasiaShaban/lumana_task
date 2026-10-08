@@ -1,40 +1,38 @@
 import 'dart:convert';
-
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
+import '../../../core/app_exception.dart';
 import '../../../core/constants.dart';
-import 'product.dart';
-import 'product_response.dart';
+import 'models/product_response_dto.dart';
 
 class ProductLocalDatasource {
-  static const String _pagePrefix = 'page:';
-  static const String _indexKey = 'page_index';
+  static const String _tableName = 'cached_pages';
   static const String _historyKey = 'search_history';
 
+  final Database _db;
   final SharedPreferences _prefs;
 
-  ProductLocalDatasource(this._prefs);
+  const ProductLocalDatasource(this._db, this._prefs);
 
-  String _pageKey(String query, int skip, int limit) =>
-      '$_pagePrefix${query.trim().toLowerCase()}:$skip:$limit';
-
-  ProductResponse? getPage(String query, int skip, int limit) {
-    final raw = _prefs.getString(_pageKey(query, skip, limit));
-    if (raw == null) return null;
-
+  Future<ProductResponseDto?> getPage(String query, int skip, int limit) async {
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final cleanQuery = query.trim().toLowerCase();
 
-      return ProductResponse(
-        products: (json['products'] as List)
-            .map((e) => Product.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        total: json['total'] as int,
-        skip: skip,
-        limit: limit,
+      final maps = await _db.query(
+        _tableName,
+        where: 'query = ? AND skip = ? AND limit = ?',
+        whereArgs: [cleanQuery, skip, limit],
+        limit: 1,
       );
+
+      if (maps.isEmpty) return null;
+
+      final rawJson = maps.first['json_data'] as String;
+      final json = jsonDecode(rawJson) as Map<String, dynamic>;
+
+      return ProductResponseDto.fromJson(json);
     } catch (_) {
-      _prefs.remove(_pageKey(query, skip, limit));
       return null;
     }
   }
@@ -43,33 +41,44 @@ class ProductLocalDatasource {
     String query,
     int skip,
     int limit,
-    ProductResponse response,
+    ProductResponseDto response,
   ) async {
-    final key = _pageKey(query, skip, limit);
-    await _prefs.setString(
-      key,
-      jsonEncode({
-        'total': response.total,
-        'products': response.products.map((p) => p.toJson()).toList(),
-      }),
-    );
-    await _touchIndex(key);
+    try {
+      final cleanQuery = query.trim().toLowerCase();
+      final jsonString = jsonEncode(response.toJson());
+
+      await _db.insert(_tableName, {
+        'query': cleanQuery,
+        'skip': skip,
+        'limit': limit,
+        'json_data': jsonString,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+      await _trimCache();
+    } catch (e) {
+      throw AppException('Failed to save page to database: $e');
+    }
   }
 
-  Future<void> _touchIndex(String key) async {
-    final index = _prefs.getStringList(_indexKey) ?? <String>[];
-    index
-      ..remove(key)
-      ..add(key);
-
-    while (index.length > AppConstants.maxCachedPages) {
-      await _prefs.remove(index.removeAt(0));
-    }
-    await _prefs.setStringList(_indexKey, index);
+  Future<void> _trimCache() async {
+    await _db.execute('''
+      DELETE FROM $_tableName 
+      WHERE id NOT IN (
+        SELECT id FROM $_tableName 
+        ORDER BY updated_at DESC 
+        LIMIT ${AppConstants.maxCachedPages}
+      )
+    ''');
   }
 
   List<String> getHistory() => _prefs.getStringList(_historyKey) ?? const [];
 
-  Future<void> saveHistory(List<String> history) =>
-      _prefs.setStringList(_historyKey, history);
+  Future<void> saveHistory(List<String> history) async {
+    try {
+      await _prefs.setStringList(_historyKey, history);
+    } catch (e) {
+      throw AppException('Failed to save search history: $e');
+    }
+  }
 }

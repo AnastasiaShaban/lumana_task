@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/core/injection_container.dart';
 import 'package:lumana_task/features/search/presentation/search_screen.dart';
 
@@ -17,8 +18,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Dummy Search',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
       ),
       home: const SearchScreen(),
     );
