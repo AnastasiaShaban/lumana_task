@@ -7,6 +7,10 @@ import 'package:rxdart/rxdart.dart';
 import 'search_event.dart';
 import 'search_state.dart';
 
+EventTransformer<E> debounce<E>(Duration duration) {
+  return (events, mapper) => events.debounceTime(duration).switchMap(mapper);
+}
+
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   final ProductRepository _repo;
 
@@ -15,11 +19,9 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       super(SearchState(queryHistory: repo.searchHistory)) {
     on<SearchQueryChanged>(
       _handleSearch,
-      transformer: (events, mapper) {
-        return events
-            .debounceTime(Duration(milliseconds: AppConstants.debounceMs))
-            .switchMap(mapper);
-      },
+      transformer: debounce(
+        const Duration(milliseconds: AppConstants.debounceMs),
+      ),
     );
     on<LoadMoreProducts>(_loadNextPage);
     on<RemoveFromHistory>(_removeFromHistory);
@@ -33,8 +35,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     final cameBackOnline = event.isOnline && !state.isOnline;
     emit(state.copyWith(isOnline: event.isOnline));
 
-    final needsRefresh = state.isFromCache || state.error != null;
-    if (cameBackOnline && needsRefresh && state.query.isNotEmpty) {
+    if (cameBackOnline && state.needsRefresh && state.query.isNotEmpty) {
       add(SearchQueryChanged(state.query));
     }
   }
@@ -88,7 +89,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           isLoading: false,
           isFromCache: false,
           hasReachedMax: true,
-          error: AppException.from(e).message,
+          error: AppException.from(e),
         ),
       );
     }
@@ -98,7 +99,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     LoadMoreProducts event,
     Emitter<SearchState> emit,
   ) async {
-    if (state.hasReachedMax || state.isLoadingMore || state.query.isEmpty) {
+    if (!state.canLoadMore) {
       return;
     }
 
@@ -126,8 +127,8 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           isLoadingMore: false,
           hasReachedMax: true,
           error: state.isOnline
-              ? AppException.from(e).message
-              : AppStrings.cantLoadMoreOffline,
+              ? AppException.from(e)
+              : const AppException(AppExceptionType.offlineNoCache),
         ),
       );
     }

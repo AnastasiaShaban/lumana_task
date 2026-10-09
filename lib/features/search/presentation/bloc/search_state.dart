@@ -1,7 +1,8 @@
 import 'package:equatable/equatable.dart';
-
-import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/features/search/domain/product.dart';
+
+import '../../../../core/app_exception.dart';
+import '../../domain/search_suggestions_filter.dart';
 
 class SearchState extends Equatable {
   final List<Product> products;
@@ -9,7 +10,7 @@ class SearchState extends Equatable {
   final bool isLoadingMore;
   final bool hasReachedMax;
   final String query;
-  final String? error;
+  final AppException? error;
   final List<String> queryHistory;
   final bool isOnline;
 
@@ -27,22 +28,12 @@ class SearchState extends Equatable {
     this.isFromCache = false,
   });
 
-  List<String> suggestionsFor(String input) {
-    final needle = input.trim().toLowerCase();
-    if (needle.isEmpty) return queryHistory;
+  bool get needsRefresh => isFromCache || error != null;
 
-    return queryHistory
-        .where((item) => item.toLowerCase() != needle && _matches(item, needle))
-        .take(AppConstants.maxSuggestions)
-        .toList();
-  }
+  bool get canLoadMore => !hasReachedMax && !isLoadingMore && query.isNotEmpty;
 
-  static bool _matches(String item, String needle) {
-    final lower = item.toLowerCase();
-    if (lower.startsWith(needle)) return true;
-
-    return lower.split(RegExp(r'\s+')).any((word) => word.startsWith(needle));
-  }
+  List<String> suggestionsFor(String input) =>
+      queryHistory.filterSuggestions(input);
 
   SearchState copyWith({
     List<Product>? products,
@@ -50,7 +41,7 @@ class SearchState extends Equatable {
     bool? isLoadingMore,
     bool? hasReachedMax,
     String? query,
-    String? error,
+    AppException? error,
     bool clearError = false,
     List<String>? queryHistory,
     bool? isOnline,

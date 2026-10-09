@@ -1,10 +1,9 @@
 import '../../../core/app_exception.dart';
 import '../../../core/connectivity_service.dart';
-import '../../../core/constants.dart';
 import '../domain/product_repository.dart';
 import '../domain/search_result.dart';
-import 'product_datasource.dart';
-import 'product_local_datasource.dart';
+import 'data_sources/product_data_source.dart';
+import 'data_sources/product_local_data_source.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
   final ProductDatasource _remote;
@@ -20,7 +19,7 @@ class ProductRepositoryImpl implements ProductRepository {
         query,
         skip,
         limit,
-        const AppException(AppStrings.errOfflineNoCache),
+        const AppException(AppExceptionType.offlineNoCache),
       );
     }
 

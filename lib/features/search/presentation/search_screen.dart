@@ -8,6 +8,7 @@ import 'package:lumana_task/core/injection_container.dart';
 import 'package:lumana_task/features/search/presentation/widgets/offline_banner.dart';
 import 'package:lumana_task/features/search/presentation/widgets/search_input_field.dart';
 
+import '../../../core/context_extensions.dart';
 import 'bloc/search_bloc.dart';
 import 'bloc/search_event.dart';
 import 'bloc/search_state.dart';
@@ -79,7 +80,7 @@ class _SearchViewState extends State<_SearchView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.appTitle)),
+      appBar: AppBar(title: Text(context.l10n.appTitle)),
       body: BlocListener<SearchBloc, SearchState>(
         listenWhen: (prev, curr) =>
             curr.error != null &&
@@ -88,7 +89,11 @@ class _SearchViewState extends State<_SearchView> {
         listener: (context, state) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(state.error!)));
+            ..showSnackBar(
+              SnackBar(
+                content: Text(context.mapExceptionToString(state.error!)),
+              ),
+            );
         },
         child: Column(
           children: [
@@ -184,7 +189,7 @@ class _CacheNotice extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                AppStrings.cachedResults,
+                context.l10n.cachedResults,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -238,13 +243,16 @@ class _SearchContent extends StatelessWidget {
                     color: Theme.of(context).colorScheme.outline,
                   ),
                   const SizedBox(height: 16),
-                  Text(state.error!, textAlign: TextAlign.center),
+                  Text(
+                    context.mapExceptionToString(state.error!),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => context.read<SearchBloc>().add(
                       SearchQueryChanged(state.query),
                     ),
-                    child: const Text(AppStrings.tryAgain),
+                    child: Text(context.l10n.tryAgain),
                   ),
                 ],
               ),
@@ -253,7 +261,7 @@ class _SearchContent extends StatelessWidget {
         }
 
         if (state.products.isEmpty && state.query.isNotEmpty) {
-          return const Center(child: Text(AppStrings.nothingFound));
+          return Center(child: Text(context.l10n.nothingFound));
         }
 
         if (state.products.isEmpty) {
@@ -273,7 +281,15 @@ class _SearchContent extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               );
             }
-            return ProductListItem(product: state.products[i]);
+
+            final product = state.products[i];
+
+            return ProductListItem(
+              title: product.title,
+              price: product.price,
+              thumbnail: product.thumbnail,
+              rating: product.rating,
+            );
           },
         );
       },

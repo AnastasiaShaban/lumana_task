@@ -1,6 +1,6 @@
-import '../../../core/api_client.dart';
-import '../../../core/app_exception.dart';
-import 'models/product_response_dto.dart';
+import '../../../../core/api_client.dart';
+import '../../../../core/app_exception.dart';
+import '../dtos/product_response_dto.dart';
 
 class ProductDatasource {
   final ApiClient _apiClient;
@@ -30,7 +30,7 @@ class ProductDatasource {
 
       return ProductResponseDto.fromJson(data);
     } catch (e) {
-      throw AppException('Failed to parse response: $e');
+      throw AppException.from(e);
     }
   }
 }

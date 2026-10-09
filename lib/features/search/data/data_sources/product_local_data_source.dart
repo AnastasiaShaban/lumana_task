@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../../../core/app_exception.dart';
-import '../../../core/constants.dart';
-import 'models/product_response_dto.dart';
+import '../../../../core/app_exception.dart';
+import '../../../../core/constants.dart';
+import '../dtos/product_response_dto.dart';
 
 class ProductLocalDatasource {
   static const String _tableName = 'cached_pages';
@@ -21,7 +21,7 @@ class ProductLocalDatasource {
 
       final maps = await _db.query(
         _tableName,
-        where: 'query = ? AND skip = ? AND limit = ?',
+        where: 'query = ? AND skip = ? AND `limit` = ?',
         whereArgs: [cleanQuery, skip, limit],
         limit: 1,
       );
@@ -57,7 +57,7 @@ class ProductLocalDatasource {
 
       await _trimCache();
     } catch (e) {
-      throw AppException('Failed to save page to database: $e');
+      throw AppException.from(e);
     }
   }
 
@@ -78,7 +78,7 @@ class ProductLocalDatasource {
     try {
       await _prefs.setStringList(_historyKey, history);
     } catch (e) {
-      throw AppException('Failed to save search history: $e');
+      throw AppException.from(e);
     }
   }
 }

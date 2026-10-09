@@ -1,4 +1,4 @@
-import 'package:lumana_task/features/search/data/models/products_dto.dart';
+import 'package:lumana_task/features/search/data/dtos/product_dto.dart';
 
 class ProductResponseDto {
   final List<ProductDto> products;

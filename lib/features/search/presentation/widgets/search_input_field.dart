@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lumana_task/core/context_extensions.dart';
 
 import '../../../../core/constants.dart';
 import '../bloc/search_bloc.dart';
@@ -17,7 +18,7 @@ class SearchInputField extends StatelessWidget {
       child: TextField(
         controller: controller,
         decoration: InputDecoration(
-          hintText: AppStrings.searchHint,
+          hintText: context.l10n.searchHint,
           prefixIcon: Icon(AppIcons.search),
           suffixIcon: ValueListenableBuilder<TextEditingValue>(
             valueListenable: controller,

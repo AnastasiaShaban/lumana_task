@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants.dart';
+import '../../../../core/context_extensions.dart';
 import '../bloc/search_bloc.dart';
 import '../bloc/search_state.dart';
 
@@ -19,8 +20,8 @@ class OfflineBanner extends StatelessWidget {
           width: double.infinity,
           color: AppColors.error,
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: const Text(
-            AppStrings.noInternet,
+          child: Text(
+            context.l10n.noInternet,
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.onPrimary),
           ),

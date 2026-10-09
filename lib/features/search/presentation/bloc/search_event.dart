@@ -1,21 +1,25 @@
-abstract class SearchEvent {}
-
-class SearchQueryChanged extends SearchEvent {
-  final String query;
-
-  SearchQueryChanged(this.query);
+sealed class SearchEvent {
+  const SearchEvent();
 }
 
-class LoadMoreProducts extends SearchEvent {}
-
-class RemoveFromHistory extends SearchEvent {
+final class SearchQueryChanged extends SearchEvent {
   final String query;
 
-  RemoveFromHistory(this.query);
+  const SearchQueryChanged(this.query);
 }
 
-class ConnectivityChanged extends SearchEvent {
+final class LoadMoreProducts extends SearchEvent {
+  const LoadMoreProducts();
+}
+
+final class RemoveFromHistory extends SearchEvent {
+  final String query;
+
+  const RemoveFromHistory(this.query);
+}
+
+final class ConnectivityChanged extends SearchEvent {
   final bool isOnline;
 
-  ConnectivityChanged(this.isOnline);
+  const ConnectivityChanged(this.isOnline);
 }

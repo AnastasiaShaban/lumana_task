@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "appTitle": "Product Search",
+  "searchHint": "Search products...",
+  "nothingFound": "Nothing found",
+  "tryAgain": "Try again",
+  "noInternet": "No internet connection",
+  "cachedResults": "Showing saved results",
+  "cantLoadMoreOffline": "Can't load more while offline",
+  "errTimeout": "The server is taking too long to answer. Check your connection and try again.",
+  "errNoConnection": "No internet connection. Connect to the network and try again.",
+  "errServer": "Something went wrong on the server. Please try again later.",
+  "errUnknown": "Something went wrong. Please try again.",
+  "errOfflineNoCache": "You are offline and this search has not been saved yet."
+}

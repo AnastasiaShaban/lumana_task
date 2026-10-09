@@ -15,7 +15,7 @@ abstract final class DatabaseService {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             query TEXT,
             skip INTEGER,
-            limit INTEGER,
+            `limit` INTEGER,
             json_data TEXT,
             updated_at INTEGER
           )
