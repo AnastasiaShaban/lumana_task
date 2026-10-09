@@ -23,3 +23,8 @@ class AppIcons {
   static const IconData imageError = Icons.image_not_supported;
   static const IconData offline = Icons.cloud_off;
 }
+
+class DBConstants {
+  static const String dbName = 'app_cache.db';
+  static const String cacheTableName = 'cached_pages';
+}

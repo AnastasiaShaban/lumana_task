@@ -1,19 +1,16 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'package:lumana_task/core/connectivity_service.dart';
-import 'package:lumana_task/core/constants.dart';
+import 'package:lumana_task/core/context_extensions.dart';
 import 'package:lumana_task/core/injection_container.dart';
+import 'package:lumana_task/features/search/presentation/widgets/cache_notice.dart';
 import 'package:lumana_task/features/search/presentation/widgets/offline_banner.dart';
+import 'package:lumana_task/features/search/presentation/widgets/search_content.dart';
 import 'package:lumana_task/features/search/presentation/widgets/search_input_field.dart';
+import 'package:lumana_task/features/search/presentation/widgets/suggestion_chips.dart';
 
-import '../../../core/context_extensions.dart';
 import 'bloc/search_bloc.dart';
 import 'bloc/search_event.dart';
 import 'bloc/search_state.dart';
-import 'widgets/product_list_item.dart';
-import 'widgets/search_suggestions.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -37,44 +34,34 @@ class _SearchView extends StatefulWidget {
 class _SearchViewState extends State<_SearchView> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  StreamSubscription<bool>? _connectivitySub;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _initConnectivity();
-  }
-
-  void _initConnectivity() {
-    final bloc = context.read<SearchBloc>();
-    final connectivity = sl<ConnectivityService>();
-    connectivity.hasConnection().then((isOnline) {
-      bloc.add(ConnectivityChanged(isOnline));
-    });
-    _connectivitySub = connectivity.onConnectivityChanged.listen((isOnline) {
-      bloc.add(ConnectivityChanged(isOnline));
-    });
   }
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final state = context.read<SearchBloc>().state;
-    if (state.isLoadingMore || state.hasReachedMax) return;
 
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
     if (currentScroll >= maxScroll * 0.9) {
-      context.read<SearchBloc>().add(LoadMoreProducts());
+      context.read<SearchBloc>().add(const LoadMoreProducts());
     }
   }
 
   @override
   void dispose() {
-    _connectivitySub?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onSelectQuery(String query) {
+    _controller.text = query;
+    _controller.selection = TextSelection.collapsed(offset: query.length);
+    context.read<SearchBloc>().add(SearchQueryChanged(query));
   }
 
   @override
@@ -87,212 +74,62 @@ class _SearchViewState extends State<_SearchView> {
             curr.error != prev.error &&
             curr.products.isNotEmpty,
         listener: (context, state) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(
-                content: Text(context.mapExceptionToString(state.error!)),
-              ),
-            );
+          final error = state.error;
+
+          if (error != null) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(content: Text(context.mapExceptionToString(error))),
+              );
+          }
         },
-        child: Column(
-          children: [
-            const OfflineBanner(),
-            SearchInputField(controller: _controller),
-            _SuggestionChips(controller: _controller),
-            const _CacheNotice(),
-            Expanded(
-              child: _SearchContent(
-                controller: _controller,
-                scrollController: _scrollController,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SuggestionChips extends StatelessWidget {
-  final TextEditingController controller;
-
-  const _SuggestionChips({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller,
-      builder: (context, value, _) {
-        if (value.text.trim().isEmpty) return const SizedBox.shrink();
-
-        return BlocBuilder<SearchBloc, SearchState>(
-          buildWhen: (prev, curr) => prev.queryHistory != curr.queryHistory,
+        child: BlocBuilder<SearchBloc, SearchState>(
           builder: (context, state) {
-            final matches = state.suggestionsFor(value.text);
-            if (matches.isEmpty) return const SizedBox.shrink();
+            return Column(
+              children: [
+                if (!state.isOnline) const OfflineBanner(),
+                SearchInputField(controller: _controller),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _controller,
+                  builder: (context, value, _) {
+                    if (value.text.trim().isEmpty) {
+                      return const SizedBox.shrink();
+                    }
 
-            return SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: matches.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final suggestion = matches[i];
-
-                  return ActionChip(
-                    avatar: Icon(AppIcons.history, size: 16),
-                    label: Text(suggestion),
-                    onPressed: () {
-                      controller.text = suggestion;
-                      controller.selection = TextSelection.collapsed(
-                        offset: suggestion.length,
-                      );
+                    return SuggestionChips(
+                      suggestions: state.suggestionsFor(value.text),
+                      onSelected: _onSelectQuery,
+                    );
+                  },
+                ),
+                if (state.isFromCache && state.products.isNotEmpty)
+                  const CacheNotice(),
+                Expanded(
+                  child: SearchContent(
+                    query: state.query,
+                    products: state.products,
+                    queryHistory: state.queryHistory,
+                    isLoading: state.isLoading,
+                    hasReachedMax: state.hasReachedMax,
+                    error: state.error,
+                    scrollController: _scrollController,
+                    onSuggestionTap: _onSelectQuery,
+                    onSuggestionRemove: (q) {
+                      context.read<SearchBloc>().add(RemoveFromHistory(q));
+                    },
+                    onRetry: () {
                       context.read<SearchBloc>().add(
-                        SearchQueryChanged(suggestion),
+                        SearchQueryChanged(state.query),
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             );
           },
-        );
-      },
-    );
-  }
-}
-
-class _CacheNotice extends StatelessWidget {
-  const _CacheNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<SearchBloc, SearchState>(
-      buildWhen: (prev, curr) =>
-          prev.isFromCache != curr.isFromCache ||
-          prev.products.isEmpty != curr.products.isEmpty,
-      builder: (context, state) {
-        if (!state.isFromCache || state.products.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
-          child: Row(
-            children: [
-              Icon(
-                AppIcons.offline,
-                size: 16,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                context.l10n.cachedResults,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SearchContent extends StatelessWidget {
-  final TextEditingController controller;
-  final ScrollController scrollController;
-
-  const _SearchContent({
-    required this.controller,
-    required this.scrollController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<SearchBloc, SearchState>(
-      builder: (context, state) {
-        if (state.query.isEmpty && state.queryHistory.isNotEmpty) {
-          return SearchSuggestions(
-            suggestions: state.queryHistory,
-            onTap: (q) {
-              controller.text = q;
-              context.read<SearchBloc>().add(SearchQueryChanged(q));
-            },
-            onRemove: (q) {
-              context.read<SearchBloc>().add(RemoveFromHistory(q));
-            },
-          );
-        }
-
-        if (state.isLoading && state.products.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (state.error != null && state.products.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    AppIcons.offline,
-                    size: 48,
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.mapExceptionToString(state.error!),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => context.read<SearchBloc>().add(
-                      SearchQueryChanged(state.query),
-                    ),
-                    child: Text(context.l10n.tryAgain),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        if (state.products.isEmpty && state.query.isNotEmpty) {
-          return Center(child: Text(context.l10n.nothingFound));
-        }
-
-        if (state.products.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.only(bottom: 16),
-          itemCount: state.hasReachedMax
-              ? state.products.length
-              : state.products.length + 1,
-          itemBuilder: (_, i) {
-            if (i >= state.products.length) {
-              return const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            final product = state.products[i];
-
-            return ProductListItem(
-              title: product.title,
-              price: product.price,
-              thumbnail: product.thumbnail,
-              rating: product.rating,
-            );
-          },
-        );
-      },
+        ),
+      ),
     );
   }
 }

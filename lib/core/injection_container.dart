@@ -35,5 +35,10 @@ Future<void> setupDi() async {
         sl<ConnectivityService>(),
       ),
     )
-    ..registerFactory<SearchBloc>(() => SearchBloc(sl<ProductRepository>()));
+    ..registerFactory<SearchBloc>(
+      () => SearchBloc(
+        productRepo: sl<ProductRepository>(),
+        connectivity: sl<ConnectivityService>(),
+      ),
+    );
 }

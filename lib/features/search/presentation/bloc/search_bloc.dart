@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lumana_task/core/app_exception.dart';
 import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/features/search/domain/product_repository.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../../../../core/connectivity_service.dart';
 import 'search_event.dart';
 import 'search_state.dart';
 
@@ -12,11 +15,16 @@ EventTransformer<E> debounce<E>(Duration duration) {
 }
 
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
-  final ProductRepository _repo;
+  final ProductRepository _productRepo;
+  final ConnectivityService _connectivity;
+  StreamSubscription<bool>? _connectivitySub;
 
-  SearchBloc(ProductRepository repo)
-    : _repo = repo,
-      super(SearchState(queryHistory: repo.searchHistory)) {
+  SearchBloc({
+    required ProductRepository productRepo,
+    required ConnectivityService connectivity,
+  }) : _productRepo = productRepo,
+       _connectivity = connectivity,
+       super(SearchState(queryHistory: productRepo.searchHistory)) {
     on<SearchQueryChanged>(
       _handleSearch,
       transformer: debounce(
@@ -26,6 +34,23 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     on<LoadMoreProducts>(_loadNextPage);
     on<RemoveFromHistory>(_removeFromHistory);
     on<ConnectivityChanged>(_onConnectivityChanged);
+
+    _initConnectivity();
+  }
+
+  Future<void> _initConnectivity() async {
+    final isOnline = await _connectivity.hasConnection();
+    add(ConnectivityChanged(isOnline));
+
+    _connectivitySub = _connectivity.onConnectivityChanged.listen((isOnline) {
+      add(ConnectivityChanged(isOnline));
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _connectivitySub?.cancel();
+    return super.close();
   }
 
   Future<void> _onConnectivityChanged(
@@ -44,9 +69,21 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     RemoveFromHistory event,
     Emitter<SearchState> emit,
   ) async {
-    final updated = state.queryHistory.where((q) => q != event.query).toList();
-    emit(state.copyWith(queryHistory: updated));
-    await _repo.saveSearchHistory(updated);
+    final previousHistory = state.queryHistory;
+    final updated = previousHistory.where((q) => q != event.query).toList();
+
+    emit(state.copyWith(queryHistory: updated, clearError: true));
+
+    try {
+      await _productRepo.saveSearchHistory(updated);
+    } catch (e) {
+      emit(
+        state.copyWith(
+          queryHistory: previousHistory,
+          error: AppException.from(e),
+        ),
+      );
+    }
   }
 
   Future<void> _handleSearch(
@@ -65,7 +102,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     emit(state.copyWith(isLoading: true, query: query, clearError: true));
 
     try {
-      final result = await _repo.search(query, 0, AppConstants.pageSize);
+      final result = await _productRepo.search(query, 0, AppConstants.pageSize);
       final history = result.products.isNotEmpty
           ? _addToHistory(query)
           : state.queryHistory;
@@ -81,7 +118,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
         ),
       );
 
-      if (historyChanged) await _repo.saveSearchHistory(history);
+      if (historyChanged) await _productRepo.saveSearchHistory(history);
     } catch (e) {
       emit(
         state.copyWith(
@@ -105,7 +142,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
 
     emit(state.copyWith(isLoadingMore: true, clearError: true));
     try {
-      final result = await _repo.search(
+      final result = await _productRepo.search(
         state.query,
         state.products.length,
         AppConstants.pageSize,

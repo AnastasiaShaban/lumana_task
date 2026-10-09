@@ -3,14 +3,14 @@ import 'package:lumana_task/core/constants.dart';
 
 class SearchSuggestions extends StatelessWidget {
   final List<String> suggestions;
-  final void Function(String) onTap;
-  final void Function(String) onRemove;
+  final ValueChanged<String> onTap;
+  final ValueChanged<String> onRemove;
 
   const SearchSuggestions({
-    super.key,
     required this.suggestions,
     required this.onTap,
     required this.onRemove,
+    super.key,
   });
 
   @override

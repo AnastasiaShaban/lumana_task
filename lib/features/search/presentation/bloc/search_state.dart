@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:lumana_task/features/search/domain/product.dart';
 
 import '../../../../core/app_exception.dart';
-import '../../domain/search_suggestions_filter.dart';
+import '../../../../core/search_suggestions_filter.dart';
 
 class SearchState extends Equatable {
   final List<Product> products;
