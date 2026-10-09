@@ -7,13 +7,14 @@ import '../../../../core/constants.dart';
 import '../dtos/product_response_dto.dart';
 
 class ProductLocalDatasource {
-  static const String _tableName = 'cached_pages';
   static const String _historyKey = 'search_history';
 
   final Database _db;
   final SharedPreferences _prefs;
 
   const ProductLocalDatasource(this._db, this._prefs);
+
+  String get _tableName => DBConstants.cacheTableName;
 
   Future<ProductResponseDto?> getPage(String query, int skip, int limit) async {
     try {
@@ -28,7 +29,7 @@ class ProductLocalDatasource {
 
       if (maps.isEmpty) return null;
 
-      final rawJson = maps.first['json_data'] as String;
+      final rawJson = maps.first['json_data']! as String;
       final json = jsonDecode(rawJson) as Map<String, dynamic>;
 
       return ProductResponseDto.fromJson(json);

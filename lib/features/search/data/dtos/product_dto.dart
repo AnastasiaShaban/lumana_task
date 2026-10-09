@@ -1,4 +1,4 @@
-import 'package:lumana_task/features/search/domain/product.dart';
+import 'package:lumana_task/features/search/domain/entities/product.dart';
 
 class ProductDto {
   final int id;

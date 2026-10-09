@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:lumana_task/features/search/domain/product.dart';
+import 'package:lumana_task/features/search/domain/entities/product.dart';
 
 import '../../../../core/app_exception.dart';
 import '../../../../core/search_suggestions_filter.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lumana_task/core/app_exception.dart';
 import 'package:lumana_task/core/constants.dart';
 import 'package:lumana_task/core/context_extensions.dart';
-import 'package:lumana_task/features/search/domain/product.dart';
+import 'package:lumana_task/features/search/domain/entities/product.dart';
 import 'package:lumana_task/features/search/presentation/widgets/product_list_item.dart';
 import 'package:lumana_task/features/search/presentation/widgets/search_suggestions.dart';
 

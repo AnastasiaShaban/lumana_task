@@ -1,4 +1,4 @@
-import 'product.dart';
+import 'entities/product.dart';
 
 class SearchResult {
   final List<Product> products;
